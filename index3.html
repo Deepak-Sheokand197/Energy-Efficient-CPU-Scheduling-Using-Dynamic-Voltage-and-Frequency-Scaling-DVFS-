@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy-Efficient CPU Scheduler</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { background-color: var(--bg); color: var(--text); padding: 2rem; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(to right, #4f46e5, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header p { color: var(--text-muted); }
+
+        .container { display: grid; grid-template-columns: 300px 1fr; gap: 2rem; width: 100%; max-width: 1200px; }
+
+        .controls { background: var(--card); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); height: fit-content; }
+        
+        .input-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-muted); }
+        input, select { width: 100%; padding: 0.75rem; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--primary); }
+
+        button { width: 100%; padding: 0.75rem; margin-top: 0.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-add { background-color: var(--primary); color: white; }
+        .btn-add:hover { background-color: #4338ca; }
+        .btn-clear { background-color: var(--danger); color: white; margin-top: 1rem; }
+
+        .task-list { margin-top: 1.5rem; max-height: 300px; overflow-y: auto; }
+        .task-item { background: #0f172a; padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 6px; border-left: 4px solid var(--primary); font-size: 0.9rem; display: flex; justify-content: space-between; }
+
+        .visualizer { background: var(--card); padding: 1.5rem; border-radius: 12px; display: flex; flex-direction: column; gap: 2rem; }
+        
+        .mode-toggle { display: flex; gap: 1rem; margin-bottom: 1rem; background: #0f172a; padding: 0.5rem; border-radius: 8px; width: fit-content; }
+        .mode-btn { padding: 0.5rem 1rem; background: transparent; color: var(--text-muted); border: none; border-radius: 6px; cursor: pointer; }
+        .mode-btn.active { background: var(--success); color: white; }
+
+        .canvas-container { position: relative; height: 250px; border-bottom: 2px solid var(--text-muted); display: flex; align-items: flex-end; gap: 2px; padding-bottom: 5px; }
+        
+        .bar { width: 40px; transition: height 0.5s ease, background-color 0.3s; position: relative; border-radius: 4px 4px 0 0; }
+        .bar:hover::after { content: attr(data-info); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: black; padding: 5px; font-size: 0.8rem; border-radius: 4px; white-space: pre; z-index: 10; width: max-content; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .stat-card { background: #0f172a; padding: 1rem; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: var(--success); }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+
+        .physics-note { font-size: 0.85rem; color: var(--text-muted); margin-top: 1rem; line-height: 1.5; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 6px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>DVFS Energy Scheduler</h1>
+        <p>Dynamic Voltage and Frequency Scaling Simulator</p>
+    </header>
+
+    <div class="container">
+        <div class="controls">
+            <h3>Add Process</h3>
+            <div class="input-group">
+                <label>Process Name</label>
+                <input type="text" id="pName" placeholder="e.g., P1">
+            </div>
+            <div class="input-group">
+                <label>Burst Cycles (Workload)</label>
+                <input type="number" id="pBurst" min="1" max="100" value="50">
+            </div>
+            <div class="input-group">
+                <label>Priority / Deadline tightness</label>
+                <select id="pPriority">
+                    <option value="high">High (Critical)</option>
+                    <option value="normal">Normal (Balanced)</option>
+                    <option value="low">Low (Background)</option>
+                </select>
+            </div>
+            <button class="btn-add" onclick="addTask()">+ Add Task</button>
+            
+            <div class="task-list" id="taskList"></div>
+            <button class="btn-clear" onclick="clearTasks()">Reset All</button>
+        </div>
+
+        <div class="visualizer">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>CPU Power & Timeline Visualization</h3>
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="btn-perf" onclick="setMode('performance')">Max Performance</button>
+                    <button class="mode-btn" id="btn-eco" onclick="setMode('eco')">Energy Efficient (Green)</button>
+                </div>
+            </div>
+
+            <div class="canvas-container" id="chart">
+                <p style="position: absolute; top: 50%; left: 50%; transform: translate(-50%; -50%); color: var(--text-muted);">Add tasks to see simulation</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalTime">0 ms</div>
+                    <div class="stat-label">Total Completion Time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalEnergy">0 J</div>
+                    <div class="stat-label">Total Energy Units</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="efficiency">0%</div>
+                    <div class="stat-label">Efficiency Gain</div>
+                </div>
+            </div>
+
+            <div class="physics-note">
+                <strong>How it works (The Physics):</strong><br>
+                CPU Power is proportional to Frequency cubed (P ∝ F³). 
+                <br>In <strong>Eco Mode</strong>, we optimize based on priority:
+                <ul>
+                    <li>High Priority runs at 100% Speed (Red)</li>
+                    <li>Normal Priority runs at 80% Speed (Orange)</li>
+                    <li>Low Priority runs at 60% Speed (Green)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tasks = [];
+        let currentMode = 'performance';
+
+        const MAX_FREQ = 1.0; 
+        const MID_FREQ = 0.8; 
+        const ECO_FREQ = 0.6; 
+        
+        const getPower = (freq) => Math.pow(freq, 3);
+
+        function addTask() {
+            const nameInput = document.getElementById('pName');
+            const burstInput = document.getElementById('pBurst');
+            const prioInput = document.getElementById('pPriority');
+
+            const name = nameInput.value || `P${tasks.length + 1}`;
+            const burst = parseInt(burstInput.value);
+            const priority = prioInput.value;
+
+            if (burst <= 0) return alert("Burst must be positive");
+
+            const task = {
+                id: Date.now(),
+                name: name,
+                workload: burst, 
+                priority: priority
+            };
+
+            tasks.push(task);
+            
+            nameInput.value = `P${tasks.length + 1}`;
+            
+            renderTaskList();
+            renderChart();
+        }
+
+        function clearTasks() {
+            tasks = [];
+            document.getElementById('pName').value = "P1";
+            renderTaskList();
+            renderChart();
+        }
+
+        function renderTaskList() {
+            const list = document.getElementById('taskList');
+            list.innerHTML = '';
+            tasks.forEach(task => {
+                const item = document.createElement('div');
+                item.className = 'task-item';
+                item.innerHTML = `
+                    <span><strong>${task.name}</strong> (${task.priority})</span>
+                    <span>Load: ${task.workload}</span>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-perf').className = mode === 'performance' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('btn-eco').className = mode === 'eco' ? 'mode-btn active' : 'mode-btn';
+            renderChart();
+        }
+
+        function renderChart() {
+            const chart = document.getElementById('chart');
+            chart.innerHTML = '';
+            
+            if (tasks.length === 0) {
+                chart.innerHTML = '<p style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-muted);">Add tasks to see simulation</p>';
+                updateStats(0, 0, 0);
+                return;
+            }
+
+            let totalTime = 0;
+            let totalEnergy = 0;
+            let perfEnergyReference = 0;
+
+            tasks.forEach(task => {
+                let freq = MAX_FREQ;
+                let color = '#ef4444';
+
+                if (currentMode === 'eco') {
+                    if (task.priority === 'low') {
+                        freq = ECO_FREQ;
+                        color = '#10b981';
+                    } else if (task.priority === 'normal') {
+                        freq = MID_FREQ;
+                        color = '#f59e0b';
+                    }
+                }
+
+                const power = getPower(freq);
+                const time = task.workload / freq;
+                const energy = power * time;
+
+                totalTime += time;
+                totalEnergy += energy;
+                
+                perfEnergyReference += (getPower(MAX_FREQ) * (task.workload / MAX_FREQ));
+
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = `${power * 200}px`;
+                bar.style.width = `${(time / 100) * 100}%`;
+                bar.style.flexGrow = time; 
+                bar.style.backgroundColor = color;
+                
+                bar.setAttribute('data-info', 
+                    `${task.name} (${task.priority})\nFreq: ${(freq*100).toFixed(0)}%\nPower: ${power.toFixed(2)}W\nTime: ${time.toFixed(1)}s\nEnergy: ${energy.toFixed(2)}J`
+                );
+
+                chart.appendChild(bar);
+            });
+
+            const savings = perfEnergyReference > 0 
+                ? ((perfEnergyReference - totalEnergy) / perfEnergyReference) * 100 
+                : 0;
+
+            updateStats(totalTime, totalEnergy, savings);
+        }
+
+        function updateStats(time, energy, eff) {
+            document.getElementById('totalTime').innerText = time.toFixed(1) + ' s';
+            document.getElementById('totalEnergy').innerText = energy.toFixed(1) + ' units';
+            
+            const effEl = document.getElementById('efficiency');
+            effEl.innerText = eff.toFixed(1) + '%';
+            effEl.style.color = eff > 0 ? '#10b981' : '#94a3b8';
+        }
+    </script>
+</body>
+</html>

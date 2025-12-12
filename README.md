@@ -17,7 +17,8 @@ Users can easily switch between these strategies to compare the power consumptio
 •	Performance Metrics:
 o	Combined completion time across all tasks
 o	Combined energy consumption across all tasks
-o	Efficiency improvement percentage compared to maximum performance 
+o	Efficiency improvement percentage compared to maximum performance mode
+
 
 
 

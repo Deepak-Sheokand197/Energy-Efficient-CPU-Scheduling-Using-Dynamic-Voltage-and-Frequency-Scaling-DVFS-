@@ -10,5 +10,14 @@ Users can easily switch between these strategies to compare the power consumptio
 	Power Calculation: Uses the cubic relationship where power consumption equals speed cubed (P=F^3)[3]
 	Execution Duration: Calculated by dividing workload by processor speed (T=Workload/Speed)
 	Total Energy Used: Determined by multiplying power by duration (E=P×T)
+	This module displays real-time results and performance information:
+•	Bar Chart Display: Bar height shows power consumption level, while bar width shows execution duration
+•	Color Scheme: Red indicates high-priority tasks, orange indicates normal tasks, and green indicates low-priority background tasks
+•	Information on Hover: When users point to bars, the system displays frequency percentage, power consumption in watts, execution time, and energy used
+•	Performance Metrics:
+o	Combined completion time across all tasks
+o	Combined energy consumption across all tasks
+o	Efficiency improvement percentage compared to maximum performance mode
+
 
 

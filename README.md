@@ -14,7 +14,10 @@ Users can easily switch between these strategies to compare the power consumptio
 •	Bar Chart Display: Bar height shows power consumption level, while bar width shows execution duration
 •	Color Scheme: Red indicates high-priority tasks, orange indicates normal tasks, and green indicates low-priority background tasks
 •	Information on Hover: When users point to bars, the system displays frequency percentage, power consumption in watts, execution time, and energy used
-
+•	Performance Metrics:
+o	Combined completion time across all tasks
+o	Combined energy consumption across all tasks
+o	Efficiency improvement percentage compared to maximum performance mode
 
 
 
